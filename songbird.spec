@@ -5,7 +5,7 @@
 Name:		songbird
 Summary:	The desktop media player mashed-up with the Web
 Version:	1.1.1
-Release:	%mkrel 2
+Release:	%mkrel 3
 # Songbird requires an upstream patched xulrunner and taglib to function
 # properly. Bundled vendor sources can be found at:
 # http://wiki.songbirdnest.com/Developer/Articles/Builds/Contributed_Builds 
@@ -15,6 +15,8 @@ Source2:	http://rpm.rutgers.edu/fedora/songbird.desktop
 Source3:	http://rpm.rutgers.edu/fedora/find-external-requires
 Source4:	http://rpm.rutgers.edu/fedora/songbird.sh.in
 Patch0:		http://rpm.rutgers.edu/fedora/nsAppRunner.patch
+# (fc) 1.1.1-3mdv fix JS warning when running not under GNOME (Mdv bug #49103)
+Patch1:		songbird-1.1-fixjswarning.patch
 Group:		Sound
 License:	GPLv2
 URL:		http://www.getsongbird.com/
@@ -60,6 +62,8 @@ resources and fostering Open Web media standards.
 
 # Songbird bugzilla 15676
 %patch0 -p0 -b .fixarch
+# don't put backup extension, break stupid build
+%patch1 -p1
 
 mkdir -p build/checkout/linux-%{sb_arch}
 mkdir -p build/linux-%{sb_arch}
