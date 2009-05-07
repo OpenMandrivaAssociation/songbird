@@ -5,7 +5,7 @@
 Name:		songbird
 Summary:	The desktop media player mashed-up with the Web
 Version:	1.1.1
-Release:	%mkrel 3
+Release:	%mkrel 4
 # Songbird requires an upstream patched xulrunner and taglib to function
 # properly. Bundled vendor sources can be found at:
 # http://wiki.songbirdnest.com/Developer/Articles/Builds/Contributed_Builds 
@@ -35,6 +35,7 @@ BuildRequires:	zip
 BuildRequires:  subversion
 Requires:	gstreamer0.10-plugins-base
 Suggests:	gstreamer0.10-plugins-ugly
+Suggests:	gstreamer0.10-plugins-bad
 
 # Filter internal provides
 AutoProv: 0
