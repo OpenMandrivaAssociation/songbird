@@ -1,11 +1,12 @@
 %define pkgname Songbird
 
-%define buildrel 1018
+%define buildrel 1146
+%define mozappdir %{_libdir}/songbird-%{version}
 
 Name:		songbird
 Summary:	The desktop media player mashed-up with the Web
-Version:	1.1.1
-Release:	%mkrel 4
+Version:	1.2.0
+Release:	%mkrel 1
 # Songbird requires an upstream patched xulrunner and taglib to function
 # properly. Bundled vendor sources can be found at:
 # http://wiki.songbirdnest.com/Developer/Articles/Builds/Contributed_Builds 
@@ -15,15 +16,15 @@ Source2:	http://rpm.rutgers.edu/fedora/songbird.desktop
 Source3:	http://rpm.rutgers.edu/fedora/find-external-requires
 Source4:	http://rpm.rutgers.edu/fedora/songbird.sh.in
 Patch0:		http://rpm.rutgers.edu/fedora/nsAppRunner.patch
-# (fc) 1.1.1-3mdv fix JS warning when running not under GNOME (Mdv bug #49103)
-Patch1:		songbird-1.1-fixjswarning.patch
+# (fc) 1.2.0-1mdv fix format security errors
+Patch1:		xulrunner-1.9.0.5-fix-string-format.patch
 Group:		Sound
 License:	GPLv2
 URL:		http://www.getsongbird.com/
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires:	cmake, desktop-file-utils
-BuildRequires:	libgstreamer-plugins-base-devel >= 0.10.7
-BuildRequires:	libgstreamer-devel >= 0.10.1
+BuildRequires:	libgstreamer-plugins-base-devel >= 0.10.22
+BuildRequires:	libgstreamer-devel >= 0.10.22
 BuildRequires:	libxt-devel
 BuildRequires:	libIDL-devel
 BuildRequires:	libcurl-devel
@@ -52,31 +53,39 @@ resources and fostering Open Web media standards.
 
 # Upstream scripts generalize archs. Specify the proper
 # paths to match upstream for a sane build.
-%ifnarch i386
+
+%ifarch %{ix86}
+%define sb_arch i686
+%else
 %define sb_arch %{_arch}
 %endif
 
-%ifarch %ix86
-%define sb_arch i686
-%endif
-
-
 # Songbird bugzilla 15676
-%patch0 -p0 -b .fixarch
-# don't put backup extension, break stupid build
-%patch1 -p1
+%patch0 -p1 -b .fixarch
+
 
 mkdir -p build/checkout/linux-%{sb_arch}
 mkdir -p build/linux-%{sb_arch}
 rm -rf dependencies/vendor
 mv %{pkgname}%{version}-vendor dependencies/vendor
 
+cd dependencies/vendor/xulrunner/mozilla
+%patch1 -p0 -b .format-security
+cd -
+
 %build
 # Build XULRunner
 
 cd dependencies/vendor/xulrunner/mozilla
 
-# Setup XULRunner mozconfig
+# Build with -Os as it helps the browser; also, don't override mozilla's warning
+# level; they use -Wall but disable a few warnings that show up _everywhere_
+MOZ_OPT_FLAGS=$(echo $RPM_OPT_FLAGS | %{__sed} -e 's/-O2/-Os/' -e 's/-Wall//')
+
+export RPM_OPT_FLAGS=$MOZ_OPT_FLAGS
+export LDFLAGS="-Wl,-rpath,%{mozappdir}"
+
+#Setup XULRunner mozconfig
 cat << "EOF" > .mozconfig
 MOZILLA_OFFICIAL=1
 export MOZILLA_OFFICIAL
@@ -87,9 +96,16 @@ mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/compiled/xulrunner
 ac_add_options --prefix=%{_prefix}
 ac_add_options --libdir=%{_libdir}
 ac_add_options --mandir=%{_mandir}
+ac_add_options --with-system-jpeg
+ac_add_options --with-system-zlib
+ac_add_options --with-pthreads
+ac_add_options --enable-optimize="$RPM_OPT_FLAGS"
+ac_add_options --enable-pango
+ac_add_options --enable-system-cairo
+ac_add_options --enable-svg
+ac_add_options --enable-canvas
 ac_add_options --enable-application=xulrunner
 ac_add_options --with-xulrunner-stub-name=songbird-bin
-ac_add_options --enable-optimize
 ac_add_options --disable-debug
 ac_add_options --disable-tests
 ac_add_options --disable-auto-deps
@@ -147,12 +163,9 @@ echo "ac_add_options --with-media-core=gstreamer-system" > songbird.config
 # In order for debug packages to be created, -gstabs+ must be
 # removed from the compile options under 64 bit or debugedit chokes,
 # bug 453506
-%ifarch x86_64 ppc64
 sed -i s/-gstabs+//g configure.ac
-%endif
 
 make -f songbird.mk MOZ_MAKE_FLAGS=%{?_smp_mflags}
-
 
 %install
 rm -rf %{buildroot} 
@@ -160,11 +173,19 @@ rm -rf %{buildroot}
 cd compiled
 mkdir -p %{buildroot}%{_libdir}
 mkdir -p %{buildroot}%{_bindir}
+mkdir -p %{buildroot}%{_datadir}/icons/hicolor/32x32/apps
 mkdir -p %{buildroot}%{_datadir}/icons/hicolor/64x64/apps
+mkdir -p %{buildroot}%{_datadir}/icons/hicolor/128x128/apps
+mkdir -p %{buildroot}%{_datadir}/icons/hicolor/256x256/apps
+mkdir -p %{buildroot}%{_datadir}/icons/hicolor/512x512/apps
 mkdir -p %{buildroot}%{_datadir}/applications
-cp -pR dist %{buildroot}%{_libdir}/songbird-%{version}
+cp -pR dist %{buildroot}%{mozappdir}
 
-cp -p ../app/branding/icon64.png %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/songbird.png
+cp -p ../app/branding/songbird-32.png %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/songbird.png
+cp -p ../app/branding/songbird-64.png %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/songbird.png
+cp -p ../app/branding/songbird-128.png %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/songbird.png
+cp -p ../app/branding/songbird-256.png %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/songbird.png
+cp -p ../app/branding/songbird-512.png %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/songbird.png
 
 desktop-file-install --vendor="" --dir=%{buildroot}%{_datadir}/applications %{SOURCE2}
 
@@ -191,10 +212,86 @@ rm -rf %{buildroot}
 %endif
 
 %files 
-%defattr(-, root, root, -)
-%doc TRADEMARK.txt README.txt LICENSE.html
-%{_bindir}/songbird
-%{_libdir}/songbird-%{version}
+%defattr(644,root,root,755)
+%doc %{mozappdir}/TRADEMARK.txt
+%doc %{mozappdir}/README.txt
+%doc %{mozappdir}/LICENSE.html
+%dir %{mozappdir}
+%{mozappdir}/chrome
+%{mozappdir}/components/*.txt
+%{mozappdir}/defaults
+%{mozappdir}/extensions
+%{mozappdir}/plugins
+%{mozappdir}/scripts
+%{mozappdir}/searchplugins
+%{mozappdir}/xulrunner/chrome
+%{mozappdir}/xulrunner/*.chk
+%{mozappdir}/xulrunner/dependentlibs.list
+%{mozappdir}/xulrunner/platform.ini
+%{mozappdir}/xulrunner/updater.ini
+%{mozappdir}/updater.ini
+%{mozappdir}/application.ini
+%{mozappdir}/blocklist.xml
+%{mozappdir}/xulrunner/dictionaries/*
+%{mozappdir}/xulrunner/defaults/*
+%{mozappdir}/xulrunner/extensions/*
+%{mozappdir}/xulrunner/res/*
+%{mozappdir}/xulrunner/icons/*
+%{mozappdir}/xulrunner/components/*.js
+%{mozappdir}/xulrunner/greprefs/*.js
+%{mozappdir}/xulrunner/modules/*.js
+%{mozappdir}/xulrunner/modules/*.jsm
+%{mozappdir}/xulrunner/README.txt
+%{mozappdir}/xulrunner/LICENSE
+%{mozappdir}/jsmodules/*.jsm
+%{mozappdir}/components/*.jsm
+%{mozappdir}/components/*.js
+%{mozappdir}/songbird-512.png
 %{_datadir}/applications/songbird.desktop
+%{_datadir}/icons/hicolor/32x32/apps/songbird.png
 %{_datadir}/icons/hicolor/64x64/apps/songbird.png
+%{_datadir}/icons/hicolor/128x128/apps/songbird.png
+%{_datadir}/icons/hicolor/256x256/apps/songbird.png
+%{_datadir}/icons/hicolor/512x512/apps/songbird.png
+%{mozappdir}/.autoreg
+
+%defattr(755,root,root,755)
+%dir %{mozappdir}/xulrunner
+%dir %{mozappdir}/xulrunner/defaults
+%dir %{mozappdir}/xulrunner/greprefs
+%dir %{mozappdir}/xulrunner/dictionaries
+%dir %{mozappdir}/xulrunner/components
+%dir %{mozappdir}/xulrunner/res
+%dir %{mozappdir}/xulrunner/modules
+%dir %{mozappdir}/xulrunner/icons
+%dir %{mozappdir}/xulrunner/plugins
+%dir %{mozappdir}/xulrunner/extensions
+%dir %{mozappdir}/jsmodules
+%dir %{mozappdir}/components
+%dir %{mozappdir}/lib
+
+%{_bindir}/songbird
+%{mozappdir}/xulrunner/components/*.xpt
+%{mozappdir}/components/*.xpt
+%{mozappdir}/components/*.so
+%{mozappdir}/xulrunner/*.so
+%{mozappdir}/lib/*.so
+%{mozappdir}/*.so
+%{mozappdir}/songbird-bin
+%{mozappdir}/songbird
+%{mozappdir}/xulrunner/components/*.so
+%{mozappdir}/xulrunner/plugins/*.so
+%{mozappdir}/xulrunner/mangle
+%{mozappdir}/xulrunner/mozilla-xremote-client
+%{mozappdir}/xulrunner/nsinstall
+%{mozappdir}/xulrunner/regxpcom
+%{mozappdir}/xulrunner/shlibsign
+%{mozappdir}/xulrunner/ssltunnel
+%{mozappdir}/xulrunner/xpcshell
+%{mozappdir}/xulrunner/xpidl
+%{mozappdir}/xulrunner/xpt_dump
+%{mozappdir}/xulrunner/xpt_link
+%{mozappdir}/xulrunner/xulrunner
+%{mozappdir}/xulrunner/xulrunner-bin
+%{mozappdir}/xulrunner/run-mozilla.sh
 
