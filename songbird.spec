@@ -1,12 +1,12 @@
 %define pkgname Songbird
 
-%define buildrel 1146
+%define buildrel 1438
 %define mozappdir %{_libdir}/songbird-%{version}
 
 Name:		songbird
 Summary:	The desktop media player mashed-up with the Web
-Version:	1.2.0
-Release:	%mkrel 2
+Version:	1.4.3
+Release:	%mkrel 1
 # Songbird requires an upstream patched xulrunner and taglib to function
 # properly. Bundled vendor sources can be found at:
 # http://wiki.songbirdnest.com/Developer/Articles/Builds/Contributed_Builds 
@@ -15,7 +15,6 @@ Source1:	http://rpm.rutgers.edu/fedora/%{pkgname}%{version}-%{buildrel}-vendor-r
 Source2:	http://rpm.rutgers.edu/fedora/songbird.desktop
 Source3:	http://rpm.rutgers.edu/fedora/find-external-requires
 Source4:	http://rpm.rutgers.edu/fedora/songbird.sh.in
-Patch0:		http://rpm.rutgers.edu/fedora/nsAppRunner.patch
 # (fc) 1.2.0-1mdv fix format security errors
 Patch1:		xulrunner-1.9.0.5-fix-string-format.patch
 Group:		Sound
@@ -60,10 +59,6 @@ resources and fostering Open Web media standards.
 %define sb_arch %{_arch}
 %endif
 
-# Songbird bugzilla 15676
-%patch0 -p1 -b .fixarch
-
-
 mkdir -p build/checkout/linux-%{sb_arch}
 mkdir -p build/linux-%{sb_arch}
 rm -rf dependencies/vendor
@@ -72,6 +67,9 @@ mv %{pkgname}%{version}-vendor dependencies/vendor
 cd dependencies/vendor/xulrunner/mozilla
 %patch1 -p0 -b .format-security
 cd -
+
+# disable ipod support
+sed -i -e 's|DEFAULT_EXTENSIONS += ipod|echo "DEFAULT_EXTENSIONS += ipod"|g' extensions/Makefile.in
 
 %build
 # Build XULRunner
@@ -133,8 +131,17 @@ mkdir -p dependencies/linux-%{sb_arch}/xulrunner/release
 
 # Package XULRunner
 cd tools/scripts
-./make-mozilla-sdk.sh ../../dependencies/vendor/xulrunner/mozilla ../../dependencies/vendor/xulrunner/mozilla/compiled/xulrunner ../../dependencies/linux-%{sb_arch}/mozilla/release
-./make-xulrunner-tarball.sh ../../dependencies/vendor/xulrunner/mozilla/compiled/xulrunner/dist/bin ../../dependencies/linux-%{sb_arch}/xulrunner/release xulrunner.tar.gz
+
+cp -f ../../dependencies/vendor/xulrunner/make-mozilla-sdk.sh .
+cp -f ../../dependencies/vendor/xulrunner/make-xulrunner-tarball.sh .
+
+./make-mozilla-sdk.sh \
+ ../../dependencies/vendor/xulrunner/mozilla \
+ ../../dependencies/vendor/xulrunner/mozilla/compiled/xulrunner \
+ ../../dependencies/linux-%{sb_arch}/mozilla/release
+./make-xulrunner-tarball.sh \
+ ../../dependencies/vendor/xulrunner/mozilla/compiled/xulrunner/dist/bin \
+ ../../dependencies/linux-%{sb_arch}/xulrunner/release xulrunner.tar.bz2
 
 # Link the completed package where make expects it
 ln -s ../../dependencies/linux-%{sb_arch}/mozilla ../../build/linux-%{sb_arch}/mozilla
@@ -156,6 +163,10 @@ cd ../..
 export SB_ENABLE_INSTALLER=1
 export SONGBIRD_OFFICIAL=1
 export SB_ENABLE_JARS=1
+
+# prevent the build system from trying to keep your mozbrowser up-to-date
+export SB_DISABLE_DEPEND_PKG_MGMT=1
+export SB_DISABLE_PKG_AUTODEPS=1
 
 # Force system library usage
 echo "ac_add_options --with-media-core=gstreamer-system" > songbird.config
@@ -231,10 +242,11 @@ rm -rf %{buildroot}
 %{mozappdir}/xulrunner/updater.ini
 %{mozappdir}/updater.ini
 %{mozappdir}/application.ini
+%{mozappdir}/songbird.ini
+%{mozappdir}/gstreamer
 %{mozappdir}/blocklist.xml
 %{mozappdir}/xulrunner/dictionaries/*
 %{mozappdir}/xulrunner/defaults/*
-%{mozappdir}/xulrunner/extensions/*
 %{mozappdir}/xulrunner/res/*
 %{mozappdir}/xulrunner/icons/*
 %{mozappdir}/xulrunner/components/*.js
@@ -265,7 +277,6 @@ rm -rf %{buildroot}
 %dir %{mozappdir}/xulrunner/modules
 %dir %{mozappdir}/xulrunner/icons
 %dir %{mozappdir}/xulrunner/plugins
-%dir %{mozappdir}/xulrunner/extensions
 %dir %{mozappdir}/jsmodules
 %dir %{mozappdir}/components
 %dir %{mozappdir}/lib
