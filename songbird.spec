@@ -6,7 +6,7 @@
 Name:		songbird
 Summary:	The desktop media player mashed-up with the Web
 Version:	1.4.3
-Release:	%mkrel 1
+Release:	%mkrel 2
 # Songbird requires an upstream patched xulrunner and taglib to function
 # properly. Bundled vendor sources can be found at:
 # http://wiki.songbirdnest.com/Developer/Articles/Builds/Contributed_Builds 
@@ -17,6 +17,10 @@ Source3:	http://rpm.rutgers.edu/fedora/find-external-requires
 Source4:	http://rpm.rutgers.edu/fedora/songbird.sh.in
 # (fc) 1.2.0-1mdv fix format security errors
 Patch1:		xulrunner-1.9.0.5-fix-string-format.patch
+# add upstream patch to some bugs with system gstreamer
+# http://bugzilla.songbirdnest.com/show_bug.cgi?id=20660
+Patch2:		changeset_r18100.diff
+Patch3:		Songbird1.4.3-fix-build.patch
 Group:		Sound
 License:	GPLv2
 URL:		http://www.getsongbird.com/
@@ -66,6 +70,14 @@ mv %{pkgname}%{version}-vendor dependencies/vendor
 
 cd dependencies/vendor/xulrunner/mozilla
 %patch1 -p0 -b .format-security
+cd -
+
+# gstreamer patch
+%patch2 -p2 -b .gstreamer
+
+# fix build
+cd dependencies/vendor/xulrunner/mozilla/modules/libpr0n/build
+%patch3 -p0
 cd -
 
 # disable ipod support
