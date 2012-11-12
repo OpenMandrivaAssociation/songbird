@@ -1,0 +1,13 @@
+Index: /trunk/components/mediacore/gstreamer/src/sbGStreamerMediacore.cpp
+===================================================================
+--- /trunk/components/mediacore/gstreamer/src/sbGStreamerMediacore.cpp (revision 17787)
++++ /trunk/components/mediacore/gstreamer/src/sbGStreamerMediacore.cpp (revision 18100)
+@@ -946,4 +946,8 @@
+ 
+     mPlayingGaplessly = PR_TRUE;
++
++    /* Ideally we wouldn't dispatch this until actual audio output of this new
++     * file has started, but playbin2 doesn't tell us about that yet */
++    DispatchMediacoreEvent (sbIMediacoreEvent::STREAM_START);
+   }
+ 
