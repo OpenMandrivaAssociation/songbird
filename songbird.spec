@@ -23,7 +23,7 @@ Patch2:		changeset_r18100.diff
 Patch3:		Songbird1.4.3-fix-build.patch
 Group:		Sound
 License:	GPLv2
-URL:		http://www.getsongbird.com/
+URL:		https://www.getsongbird.com/
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires:	cmake, desktop-file-utils
 BuildRequires:	libgstreamer-plugins-base-devel >= 0.10.22
